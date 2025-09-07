@@ -4,10 +4,8 @@ import java.io.*;
 import java.util.*;
 
 class ClientHandler implements Runnable {
-
   private final Socket clientSocket;
   private Map<String, DataStoreValue> datastore = new HashMap<>();
-  private Set<String> setMethodOptions = Set.of("PX", "EX", "NX", "XX");
 
   public ClientHandler(Socket clientSocket) {
     this.clientSocket = clientSocket;
@@ -57,16 +55,16 @@ class ClientHandler implements Runnable {
 
   private String processCommand(List<String> cmd) {
     System.out.println("Processing the command: " + cmd.toString());
-    switch (cmd.get(0).toLowerCase()) {
-      case "ping":
+    switch (cmd.get(0).toUpperCase()) {
+      case "PING":
         return "+PONG\r\n";
-      case "echo": {
+      case "ECHO": {
         if (cmd.size() != 2) {
           return "-ERR invalid command ECHO - wrong number of arguments";
         }
         return "$" + cmd.get(1).length() + "\r\n" + cmd.get(1) + "\r\n";
       }
-      case "set": {
+      case "SET": {
         if (cmd.size() < 3 || cmd.size() > 5) {
           return "-ERR wrong number of arguments for 'SET' command";
         }
@@ -107,7 +105,7 @@ class ClientHandler implements Runnable {
         datastore.put(key, new DataStoreValue(value, expiryMillis));
         return "+OK\r\n";
       }
-      case "get": {
+      case "GET": {
         if (cmd.size() != 2) {
           return "-ERR invalid command get - wrong number of arguments";
         }
@@ -117,8 +115,30 @@ class ClientHandler implements Runnable {
         }
         return "$-1\r\n";
       }
+      case "INCR": {
+        return processCommandIncr(cmd);
+      }
       default:
         return "-ERR Invalid Command";
+    }
+  }
+
+  private String processCommandIncr(List<String> cmd) {
+    if(cmd.size() != 2){
+      return "-ERR - Incorrect argument INCR method";
+    }
+    DataStoreValue data = datastore.get(cmd.get(1));
+    if(data == null || data.isExpired()) {
+      datastore.put(cmd.get(1), new DataStoreValue(1));
+      return ":1\r\n";
+    }
+    try {
+      long existingValue = Long.parseLong(data.getValue());
+      data.updateValue(String.valueOf(existingValue + 1));
+      datastore.put(cmd.get(1), data);
+      return ":"+data.getValue()+"\r\n";
+    } catch(NumberFormatException e) {
+      return "-ERR value is not an integer or out of range\r\n";
     }
   }
 }
