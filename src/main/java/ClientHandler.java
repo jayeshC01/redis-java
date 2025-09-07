@@ -6,6 +6,8 @@ import java.util.*;
 class ClientHandler implements Runnable {
   private final Socket clientSocket;
   private Map<String, DataStoreValue> datastore = new HashMap<>();
+  private boolean isTransactionEnabled = false;
+  private List<List<String>> queuedCommands = new ArrayList<>();
 
   public ClientHandler(Socket clientSocket) {
     this.clientSocket = clientSocket;
@@ -21,6 +23,9 @@ class ClientHandler implements Runnable {
               new OutputStreamWriter(clientSocket.getOutputStream()));
       while (true) {
         List<String> cmdparts = parseRespCommand(reader);
+        if(isTransactionEnabled) {
+          queueCommands(cmdparts);
+        }
         String response = processCommand(cmdparts);
         writer.write(response);
         writer.flush();
@@ -56,71 +61,75 @@ class ClientHandler implements Runnable {
   private String processCommand(List<String> cmd) {
     System.out.println("Processing the command: " + cmd.toString());
     switch (cmd.get(0).toUpperCase()) {
-      case "PING":
-        return "+PONG\r\n";
-      case "ECHO": {
-        if (cmd.size() != 2) {
-          return "-ERR invalid command ECHO - wrong number of arguments";
-        }
-        return "$" + cmd.get(1).length() + "\r\n" + cmd.get(1) + "\r\n";
-      }
-      case "SET": {
-        if (cmd.size() < 3 || cmd.size() > 5) {
-          return "-ERR wrong number of arguments for 'SET' command";
-        }
-
-        String key = cmd.get(1);
-        String value = cmd.get(2);
-        String option = cmd.size() >= 4 ? cmd.get(3).toUpperCase() : null;
-        String expiryArg = cmd.size() == 5 ? cmd.get(4) : null;
-        long expiryMillis = 0;
-
-        if ("EX".equals(option) || "PX".equals(option)) {
-          if (expiryArg == null) {
-            return "-ERR missing expiry time for EX/PX option";
-          }
-
-          try {
-            long expiryTime = Long.parseLong(expiryArg);
-            expiryMillis = System.currentTimeMillis() + (
-                "EX".equals(option) ? expiryTime * 1000 : expiryTime
-            );
-          } catch (NumberFormatException e) {
-            return "-ERR invalid expiry time - must be a number";
-          }
-        }
-
-        if ("NX".equals(option)) {
-          if (datastore.containsKey(key)) {
-            return "$-1\r\n"; // Don't overwrite existing key
-          }
-        } else if ("XX".equals(option)) {
-          if (!datastore.containsKey(key)) {
-            return "$-1\r\n"; // Don't set if key doesn't exist
-          }
-        } else if (option != null && !"EX".equals(option) && !"PX".equals(option)) {
-          return "-ERR unknown option: " + option;
-        }
-
-        datastore.put(key, new DataStoreValue(value, expiryMillis));
-        return "+OK\r\n";
-      }
-      case "GET": {
-        if (cmd.size() != 2) {
-          return "-ERR invalid command get - wrong number of arguments";
-        }
-        DataStoreValue data = datastore.get(cmd.get(1));
-        if(data!=null && !data.isExpired()) {
-          return "$" + data.getValue().length() + "\r\n" + data.getValue() + "\r\n";
-        }
-        return "$-1\r\n";
-      }
-      case "INCR": {
-        return processCommandIncr(cmd);
-      }
+      case "PING": return "+PONG\r\n";
+      case "ECHO": return processCommandEcho(cmd);
+      case "SET": return processCommandSet(cmd);
+      case "GET": return processCommandGet(cmd);
+      case "INCR": return processCommandIncr(cmd);
+      case "MULTI": return processCommandMulti(cmd);
       default:
         return "-ERR Invalid Command";
     }
+  }
+
+  private String processCommandEcho(List<String> cmd) {
+    if (cmd.size() != 2) {
+      return "-ERR invalid command ECHO - wrong number of arguments";
+    }
+    return "$" + cmd.get(1).length() + "\r\n" + cmd.get(1) + "\r\n";
+  }
+
+  private String processCommandGet(List<String> cmd) {
+    if (cmd.size() != 2) {
+      return "-ERR invalid command get - wrong number of arguments";
+    }
+    DataStoreValue data = datastore.get(cmd.get(1));
+    if(data!=null && !data.isExpired()) {
+      return "$" + data.getValue().length() + "\r\n" + data.getValue() + "\r\n";
+    }
+    return "$-1\r\n";
+  }
+
+  private String processCommandSet(List<String> cmd) {
+    if (cmd.size() < 3 || cmd.size() > 5) {
+      return "-ERR wrong number of arguments for 'SET' command";
+    }
+
+    String key = cmd.get(1);
+    String value = cmd.get(2);
+    String option = cmd.size() >= 4 ? cmd.get(3).toUpperCase() : null;
+    String expiryArg = cmd.size() == 5 ? cmd.get(4) : null;
+    long expiryMillis = 0;
+
+    if ("EX".equals(option) || "PX".equals(option)) {
+      if (expiryArg == null) {
+        return "-ERR missing expiry time for EX/PX option";
+      }
+
+      try {
+        long expiryTime = Long.parseLong(expiryArg);
+        expiryMillis = System.currentTimeMillis() + (
+            "EX".equals(option) ? expiryTime * 1000 : expiryTime
+        );
+      } catch (NumberFormatException e) {
+        return "-ERR invalid expiry time - must be a number";
+      }
+    }
+
+    if ("NX".equals(option)) {
+      if (datastore.containsKey(key)) {
+        return "$-1\r\n"; // Don't overwrite existing key
+      }
+    } else if ("XX".equals(option)) {
+      if (!datastore.containsKey(key)) {
+        return "$-1\r\n"; // Don't set if key doesn't exist
+      }
+    } else if (option != null && !"EX".equals(option) && !"PX".equals(option)) {
+      return "-ERR unknown option: " + option;
+    }
+
+    datastore.put(key, new DataStoreValue(value, expiryMillis));
+    return "+OK\r\n";
   }
 
   private String processCommandIncr(List<String> cmd) {
@@ -140,5 +149,14 @@ class ClientHandler implements Runnable {
     } catch(NumberFormatException e) {
       return "-ERR value is not an integer or out of range\r\n";
     }
+  }
+
+  private String processCommandMulti(List<String> cmd) {
+    isTransactionEnabled = true;
+    return "+OK\r\n";
+  }
+
+  private void queueCommands(List<String> cmd) {
+    queuedCommands.add(cmd);
   }
 }
