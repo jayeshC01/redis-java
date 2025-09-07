@@ -7,9 +7,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 class ClientHandler implements Runnable {
   private final Socket clientSocket;
-  private static Map<String, DataStoreValue> datastore = new ConcurrentHashMap<>();
+  private static final Map<String, DataStoreValue> datastore = new ConcurrentHashMap<>();
   private boolean isTransactionEnabled = false;
-  private List<List<String>> queuedCommands = new ArrayList<>();
+  private final List<List<String>> queuedCommands = new ArrayList<>();
 
   public ClientHandler(Socket clientSocket) {
     this.clientSocket = clientSocket;
@@ -24,9 +24,9 @@ class ClientHandler implements Runnable {
       BufferedWriter writer =
           new BufferedWriter(
               new OutputStreamWriter(clientSocket.getOutputStream()));
-      while (true) {
+      while(true) {
         List<String> cmdparts = parseRespCommand(reader);
-        if(isTransactionEnabled) {
+        if(isTransactionEnabled && !cmdparts.get(0).equalsIgnoreCase("DISCARD")) {
           response = queueCommands(cmdparts);
         } else {
           response = processCommand(cmdparts);
@@ -64,17 +64,17 @@ class ClientHandler implements Runnable {
 
   private String processCommand(List<String> cmd) {
     System.out.println("Processing the command: " + cmd.toString());
-    switch (cmd.get(0).toUpperCase()) {
-      case "PING": return "+PONG\r\n";
-      case "ECHO": return processCommandEcho(cmd);
-      case "SET": return processCommandSet(cmd);
-      case "GET": return processCommandGet(cmd);
-      case "INCR": return processCommandIncr(cmd);
-      case "MULTI": return processCommandMulti(cmd);
-      case "EXEC": return processCommandExec();
-      default:
-        return "-ERR Invalid Command";
-    }
+    return switch (cmd.get(0).toUpperCase()) {
+      case "PING" -> "+PONG\r\n";
+      case "ECHO" -> processCommandEcho(cmd);
+      case "SET" -> processCommandSet(cmd);
+      case "GET" -> processCommandGet(cmd);
+      case "INCR" -> processCommandIncr(cmd);
+      case "MULTI" -> processCommandMulti();
+      case "EXEC" -> processCommandExec();
+      case "DISCARD" -> processCommandDiscard();
+      default -> "-ERR Invalid Command";
+    };
   }
 
   private String processCommandEcho(List<String> cmd) {
@@ -159,7 +159,7 @@ class ClientHandler implements Runnable {
     }
   }
 
-  private String processCommandMulti(List<String> cmd) {
+  private String processCommandMulti() {
     isTransactionEnabled = true;
     return "+OK\r\n";
   }
@@ -171,13 +171,13 @@ class ClientHandler implements Runnable {
       return "-ERR EXEC without MULTI\r\n";
     }
     isTransactionEnabled = false;
-    if(queuedCommands.size() == 0) {
+    if(queuedCommands.isEmpty()) {
       System.out.println("Transaction in disables - empty array");
       return "*0\r\n";
     }
 
     List<String> responses = queuedCommands.stream()
-        .map(cmd -> processCommand(cmd))
+        .map(this::processCommand)
         .collect(Collectors.toList());
 
     queuedCommands.clear();
@@ -192,5 +192,14 @@ class ClientHandler implements Runnable {
       return "+QUEUED\r\n";
     }
     return processCommandExec();
+  }
+
+  private String processCommandDiscard() {
+    if(isTransactionEnabled){
+      queuedCommands.clear();
+      isTransactionEnabled=false;
+      return "+OK\r\n";
+    }
+    return "-ERR DISCARD without MULTI\r\n";
   }
 }
