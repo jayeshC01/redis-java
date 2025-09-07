@@ -2,10 +2,12 @@ import java.lang.*;
 import java.net.Socket;
 import java.io.*;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.concurrent.ConcurrentHashMap;
 
 class ClientHandler implements Runnable {
   private final Socket clientSocket;
-  private Map<String, DataStoreValue> datastore = new HashMap<>();
+  private static Map<String, DataStoreValue> datastore = new ConcurrentHashMap<>();
   private boolean isTransactionEnabled = false;
   private List<List<String>> queuedCommands = new ArrayList<>();
 
@@ -14,6 +16,7 @@ class ClientHandler implements Runnable {
   }
 
   public void run() {
+    String response;
     try {
       BufferedReader reader =
           new BufferedReader(
@@ -24,9 +27,10 @@ class ClientHandler implements Runnable {
       while (true) {
         List<String> cmdparts = parseRespCommand(reader);
         if(isTransactionEnabled) {
-          queueCommands(cmdparts);
+          response = queueCommands(cmdparts);
+        } else {
+          response = processCommand(cmdparts);
         }
-        String response = processCommand(cmdparts);
         writer.write(response);
         writer.flush();
       }
@@ -67,6 +71,7 @@ class ClientHandler implements Runnable {
       case "GET": return processCommandGet(cmd);
       case "INCR": return processCommandIncr(cmd);
       case "MULTI": return processCommandMulti(cmd);
+      case "EXEC": return processCommandExec();
       default:
         return "-ERR Invalid Command";
     }
@@ -83,6 +88,9 @@ class ClientHandler implements Runnable {
     if (cmd.size() != 2) {
       return "-ERR invalid command get - wrong number of arguments";
     }
+    System.out.println("Command" + cmd);
+    System.out.println("DataStore in get");
+    datastore.forEach((k, v) -> System.out.println(k + " = " + v));
     DataStoreValue data = datastore.get(cmd.get(1));
     if(data!=null && !data.isExpired()) {
       return "$" + data.getValue().length() + "\r\n" + data.getValue() + "\r\n";
@@ -156,7 +164,33 @@ class ClientHandler implements Runnable {
     return "+OK\r\n";
   }
 
-  private void queueCommands(List<String> cmd) {
-    queuedCommands.add(cmd);
+  private String processCommandExec() {
+    System.out.println("Queued Tranction"+queuedCommands);
+    System.out.println("Transaction in enabled");
+    if(!isTransactionEnabled) {
+      return "-ERR EXEC without MULTI\r\n";
+    }
+    isTransactionEnabled = false;
+    if(queuedCommands.size() == 0) {
+      System.out.println("Transaction in disables - empty array");
+      return "*0\r\n";
+    }
+
+    List<String> responses = queuedCommands.stream()
+        .map(cmd -> processCommand(cmd))
+        .collect(Collectors.toList());
+
+    queuedCommands.clear();
+    System.out.println("DataStore");
+    datastore.forEach((k, v) -> System.out.println(k + " = " + v));
+    return "*"+responses.size()+"\r\n"+String.join("", responses);
+  }
+
+  private String queueCommands(List<String> cmd) {
+    if(!cmd.get(0).equalsIgnoreCase("exec")) {
+      queuedCommands.add(cmd);
+      return "+QUEUED\r\n";
+    }
+    return processCommandExec();
   }
 }
