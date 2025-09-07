@@ -13,26 +13,15 @@ public class Main {
     try {
       serverSocket = new ServerSocket(port);
       serverSocket.setReuseAddress(true);
-      // Wait for connection from client.
-      clientSocket = serverSocket.accept();
-      while (true) {
-        // Read input from client.
-        byte[] input = new byte[1024];
-        clientSocket.getInputStream().read(input);
-        String inputString = new String(input).trim();
-        System.out.println("Received: " + inputString);
-        clientSocket.getOutputStream().write("+PONG\r\n".getBytes());
+      System.out.println("Redis server active on port "+port);
+      while(true) {
+        // Wait for connection from client.
+        clientSocket = serverSocket.accept();
+        System.out.println("New client connected: " + clientSocket.getInetAddress());
+        new Thread(new ClientHandler(clientSocket)).start();
       }
     } catch (IOException e) {
       System.out.println("IOException: " + e.getMessage());
-    } finally {
-      try {
-        if (clientSocket != null) {
-          clientSocket.close();
-        }
-      } catch (IOException e) {
-        System.out.println("IOException: " + e.getMessage());
-      }
     }
   }
 }
