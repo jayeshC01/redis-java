@@ -25,7 +25,7 @@ class ClientHandler implements Runnable {
           new BufferedWriter(
               new OutputStreamWriter(clientSocket.getOutputStream()));
       while(true) {
-        List<String> cmdparts = parseRespCommand(reader);
+        List<String> cmdparts = RespUtility.parseRespCommand(reader);
         if(isTransactionEnabled && !cmdparts.get(0).equalsIgnoreCase("DISCARD")) {
           response = queueCommands(cmdparts);
         } else {
@@ -63,9 +63,8 @@ class ClientHandler implements Runnable {
   }
 
   private String processCommand(List<String> cmd) {
-    System.out.println("Processing the command: " + cmd.toString());
     return switch (cmd.get(0).toUpperCase()) {
-      case "PING" -> "+PONG\r\n";
+      case "PING" -> RespUtility.buildSimpleResponse("PONG");
       case "ECHO" -> processCommandEcho(cmd);
       case "SET" -> processCommandSet(cmd);
       case "GET" -> processCommandGet(cmd);
@@ -73,34 +72,32 @@ class ClientHandler implements Runnable {
       case "MULTI" -> processCommandMulti();
       case "EXEC" -> processCommandExec();
       case "DISCARD" -> processCommandDiscard();
-      default -> "-ERR Invalid Command";
+      default -> RespUtility.buildErrorResponse("Invalid Command: " + cmd);
     };
   }
 
   private String processCommandEcho(List<String> cmd) {
     if (cmd.size() != 2) {
-      return "-ERR invalid command ECHO - wrong number of arguments";
+      return RespUtility.buildErrorResponse("invalid command ECHO - wrong number of arguments");
     }
-    return "$" + cmd.get(1).length() + "\r\n" + cmd.get(1) + "\r\n";
+    //return "$" + cmd.get(1).length() + "\r\n" + cmd.get(1) + "\r\n";
+    return RespUtility.serializeResponse(cmd.get(1));
   }
 
   private String processCommandGet(List<String> cmd) {
     if (cmd.size() != 2) {
-      return "-ERR invalid command get - wrong number of arguments";
+      return RespUtility.buildErrorResponse("invalid command get - wrong number of arguments");
     }
-    System.out.println("Command" + cmd);
-    System.out.println("DataStore in get");
-    datastore.forEach((k, v) -> System.out.println(k + " = " + v));
     DataStoreValue data = datastore.get(cmd.get(1));
     if(data!=null && !data.isExpired()) {
-      return "$" + data.getValue().length() + "\r\n" + data.getValue() + "\r\n";
+      return RespUtility.serializeResponse(data.getValue());
     }
-    return "$-1\r\n";
+    return RespUtility.serializeResponse(null);
   }
 
   private String processCommandSet(List<String> cmd) {
     if (cmd.size() < 3 || cmd.size() > 5) {
-      return "-ERR wrong number of arguments for 'SET' command";
+      return RespUtility.buildErrorResponse("wrong number of arguments for 'SET' command");
     }
 
     String key = cmd.get(1);
@@ -111,7 +108,7 @@ class ClientHandler implements Runnable {
 
     if ("EX".equals(option) || "PX".equals(option)) {
       if (expiryArg == null) {
-        return "-ERR missing expiry time for EX/PX option";
+        return RespUtility.buildErrorResponse("missing expiry time for EX/PX option");
       }
 
       try {
@@ -120,76 +117,69 @@ class ClientHandler implements Runnable {
             "EX".equals(option) ? expiryTime * 1000 : expiryTime
         );
       } catch (NumberFormatException e) {
-        return "-ERR invalid expiry time - must be a number";
+        return RespUtility.buildErrorResponse("invalid expiry time - must be a number");
       }
     }
 
     if ("NX".equals(option)) {
       if (datastore.containsKey(key)) {
-        return "$-1\r\n"; // Don't overwrite existing key
+        return RespUtility.serializeResponse(null); // Don't overwrite existing key
       }
     } else if ("XX".equals(option)) {
       if (!datastore.containsKey(key)) {
-        return "$-1\r\n"; // Don't set if key doesn't exist
+        return RespUtility.serializeResponse(null); // Don't set if key doesn't exist
       }
     } else if (option != null && !"EX".equals(option) && !"PX".equals(option)) {
-      return "-ERR unknown option: " + option;
+      return RespUtility.buildErrorResponse("unknown option:"+ option);
     }
 
     datastore.put(key, new DataStoreValue(value, expiryMillis));
-    return "+OK\r\n";
+    return RespUtility.buildSimpleResponse("OK");
   }
 
   private String processCommandIncr(List<String> cmd) {
     if(cmd.size() != 2){
-      return "-ERR - Incorrect argument INCR method";
+      return RespUtility.buildErrorResponse("Incorrect argument INCR method");
     }
     DataStoreValue data = datastore.get(cmd.get(1));
     if(data == null || data.isExpired()) {
       datastore.put(cmd.get(1), new DataStoreValue(1));
-      return ":1\r\n";
+      return RespUtility.serializeResponse(1);
     }
     try {
       long existingValue = Long.parseLong(data.getValue());
       data.updateValue(String.valueOf(existingValue + 1));
       datastore.put(cmd.get(1), data);
-      return ":"+data.getValue()+"\r\n";
+      return RespUtility.serializeResponse(Long.parseLong(data.getValue()));
     } catch(NumberFormatException e) {
-      return "-ERR value is not an integer or out of range\r\n";
+      return RespUtility.buildErrorResponse("value is not an integer or out of range");
     }
   }
 
   private String processCommandMulti() {
     isTransactionEnabled = true;
-    return "+OK\r\n";
+    return RespUtility.buildSimpleResponse("OK");
   }
 
   private String processCommandExec() {
-    System.out.println("Queued Tranction"+queuedCommands);
-    System.out.println("Transaction in enabled");
     if(!isTransactionEnabled) {
-      return "-ERR EXEC without MULTI\r\n";
+      return RespUtility.buildErrorResponse("EXEC without MULTI");
     }
     isTransactionEnabled = false;
     if(queuedCommands.isEmpty()) {
-      System.out.println("Transaction in disables - empty array");
-      return "*0\r\n";
+      return RespUtility.serializeResponse(List.of());
     }
-
     List<String> responses = queuedCommands.stream()
         .map(this::processCommand)
         .collect(Collectors.toList());
-
     queuedCommands.clear();
-    System.out.println("DataStore");
-    datastore.forEach((k, v) -> System.out.println(k + " = " + v));
-    return "*"+responses.size()+"\r\n"+String.join("", responses);
+    return RespUtility.serializeResponse(responses);
   }
 
   private String queueCommands(List<String> cmd) {
     if(!cmd.get(0).equalsIgnoreCase("exec")) {
       queuedCommands.add(cmd);
-      return "+QUEUED\r\n";
+      return RespUtility.buildSimpleResponse("QUEUED");
     }
     return processCommandExec();
   }
@@ -198,8 +188,8 @@ class ClientHandler implements Runnable {
     if(isTransactionEnabled){
       queuedCommands.clear();
       isTransactionEnabled=false;
-      return "+OK\r\n";
+      return RespUtility.buildSimpleResponse("OK");
     }
-    return "-ERR DISCARD without MULTI\r\n";
+    return RespUtility.buildErrorResponse("DISCARD without MULTI");
   }
 }
