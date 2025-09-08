@@ -24,13 +24,15 @@ class ClientHandler implements Runnable {
       BufferedWriter writer =
           new BufferedWriter(
               new OutputStreamWriter(clientSocket.getOutputStream()));
-      while(true) {
+      while (true) {
         List<String> cmdparts = RespUtility.parseRespCommand(reader);
+        System.out.println("Executing Command: "+cmdparts);
         if(isTransactionEnabled && !cmdparts.get(0).equalsIgnoreCase("DISCARD")) {
           response = queueCommands(cmdparts);
         } else {
           response = processCommand(cmdparts);
         }
+        System.out.println("Response Send :"+ response);
         writer.write(response);
         writer.flush();
       }
@@ -47,21 +49,6 @@ class ClientHandler implements Runnable {
     }
   }
 
-  private List<String> parseRespCommand(BufferedReader reader) throws IOException {
-    List<String> commandParts = new ArrayList<>();
-    String st = reader.readLine();
-    if (st == null || !st.startsWith("*")) {
-      throw new IOException("Invalid RESP format: Expected array start '*'");
-    }
-    int noOfElements = Integer.parseInt(st.substring(1));
-    for (int i = 0; i < noOfElements; i++) {
-      reader.readLine(); // fetching the bulksize of next content ignoring as we are using BufferedReader
-      String content = reader.readLine();
-      commandParts.add(content);
-    }
-    return commandParts;
-  }
-
   private String processCommand(List<String> cmd) {
     return switch (cmd.get(0).toUpperCase()) {
       case "PING" -> RespUtility.buildSimpleResponse("PONG");
@@ -72,15 +59,26 @@ class ClientHandler implements Runnable {
       case "MULTI" -> processCommandMulti();
       case "EXEC" -> processCommandExec();
       case "DISCARD" -> processCommandDiscard();
+      case "RPUSH" -> processCommandRpush(cmd);
       default -> RespUtility.buildErrorResponse("Invalid Command: " + cmd);
     };
+  }
+
+  private String processCommandRpush(List<String> cmd) {
+    DataStoreValue data = datastore.get(cmd.get(1));
+    if(data == null) {
+      datastore.put(cmd.get(1), new DataStoreValue(cmd.subList(2, cmd.size())));
+      return RespUtility.serializeResponse(cmd.size()-2);
+    }
+    List<String> existingList = data.getAsList();
+    existingList.addAll(cmd.subList(2, cmd.size()));
+    return RespUtility.serializeResponse(data.getAsList().size());
   }
 
   private String processCommandEcho(List<String> cmd) {
     if (cmd.size() != 2) {
       return RespUtility.buildErrorResponse("invalid command ECHO - wrong number of arguments");
     }
-    //return "$" + cmd.get(1).length() + "\r\n" + cmd.get(1) + "\r\n";
     return RespUtility.serializeResponse(cmd.get(1));
   }
 
@@ -90,7 +88,7 @@ class ClientHandler implements Runnable {
     }
     DataStoreValue data = datastore.get(cmd.get(1));
     if(data!=null && !data.isExpired()) {
-      return RespUtility.serializeResponse(data.getValue());
+      return RespUtility.serializeResponse(data.getAsString());
     }
     return RespUtility.serializeResponse(null);
   }
@@ -141,16 +139,17 @@ class ClientHandler implements Runnable {
     if(cmd.size() != 2){
       return RespUtility.buildErrorResponse("Incorrect argument INCR method");
     }
+
     DataStoreValue data = datastore.get(cmd.get(1));
     if(data == null || data.isExpired()) {
-      datastore.put(cmd.get(1), new DataStoreValue(1));
+      datastore.put(cmd.get(1), new DataStoreValue(String.valueOf(1)));
       return RespUtility.serializeResponse(1);
     }
     try {
-      long existingValue = Long.parseLong(data.getValue());
+      long existingValue = data.getAsLong();
       data.updateValue(String.valueOf(existingValue + 1));
       datastore.put(cmd.get(1), data);
-      return RespUtility.serializeResponse(Long.parseLong(data.getValue()));
+      return RespUtility.serializeResponse(data.getAsLong());
     } catch(NumberFormatException e) {
       return RespUtility.buildErrorResponse("value is not an integer or out of range");
     }

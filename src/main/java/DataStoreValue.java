@@ -1,19 +1,16 @@
+import java.util.*;
+
 public class DataStoreValue {
-  private String value;
+  private Object value;
   long expiryTimeMillis;
 
-  public DataStoreValue(String value, long expiryTimeMillis) {
+  public DataStoreValue(Object value, long expiryTimeMillis) {
     this.value = value;
     this.expiryTimeMillis = expiryTimeMillis;
   }
 
-  public DataStoreValue(String value) {
+  public DataStoreValue(Object value) {
     this.value = value;
-    this.expiryTimeMillis = 0;
-  }
-
-  public DataStoreValue(long value) {
-    this.value = String.valueOf(value);
     this.expiryTimeMillis = 0;
   }
 
@@ -21,11 +18,28 @@ public class DataStoreValue {
     return expiryTimeMillis > 0 && System.currentTimeMillis() > expiryTimeMillis;
   }
 
-  public String getValue() {
-    return value;
+  public void updateValue(Object updatedValue) {
+    this.value = updatedValue;
   }
 
-  public void updateValue(String updatedValue) {
-    this.value = updatedValue;
+  public boolean isString() {
+    return value instanceof String;
+  }
+
+  public boolean isList() {
+    return value instanceof List;
+  }
+
+  public String getAsString() {
+    return isString() ? (String) value : null;
+  }
+
+  @SuppressWarnings("unchecked")
+  public List<String> getAsList() {
+    return isList() ? (List<String>) value : null;
+  }
+
+  public Long getAsLong() {
+    return Long.parseLong(String.valueOf(value));
   }
 }

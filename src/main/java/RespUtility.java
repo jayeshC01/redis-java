@@ -3,7 +3,6 @@ import java.io.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
-
 public class RespUtility {
   private RespUtility(){}
 
@@ -15,7 +14,7 @@ public class RespUtility {
     }
     int noOfElements = Integer.parseInt(st.substring(1));
     for (int i = 0; i < noOfElements; i++) {
-      reader.readLine(); // fetching the bulksize of next content ignoring as we are using BufferedReader
+      reader.readLine(); // fetching the bulk size of next content and ignoring as we are using BufferedReader
       String content = reader.readLine();
       commandParts.add(content);
     }
@@ -37,10 +36,24 @@ public class RespUtility {
       return ":" + response + "\r\n";
     } else if (response instanceof List) {
       if (((List<?>)response).isEmpty()) return "*0\r\n";
-      List<String> formatted = ((List<?>)response).stream()
-          .map(String::valueOf)
+
+      boolean isPreformatted = ((List<?>)response).stream()
+          .allMatch(item -> item instanceof String &&
+              (((String) item).startsWith("$") || ((String) item).startsWith(":")
+                  || ((String) item).startsWith("-ERR") || ((String) item).startsWith("+")));
+      if(isPreformatted) {
+        List<String> formatted = ((List<?>)response).stream()
+            .map(String::valueOf)
+            .collect(Collectors.toList());
+        return "*" + ((List<?>)response).size() + "\r\n"+String.join("",formatted);
+      }
+      List<String> serialized = ((List<?>)response).stream()
+          .map(item -> {
+            String str = String.valueOf(item);
+            return "$" + str.length() + "\r\n" + str + "\r\n";
+          })
           .collect(Collectors.toList());
-      return "*" + ((List<?>)response).size() + "\r\n"+String.join("",formatted);
+      return "*" + serialized.size() + "\r\n" + String.join("", serialized);
     }
     return "$-1\r\n"; // default null bulk string response
   }
