@@ -62,12 +62,45 @@ class ClientHandler implements Runnable {
       case "RPUSH" -> processCommandRpush(cmd);
       case "LRANGE"-> processCommandLrange(cmd);
       case "LPUSH" -> processCommandLpush(cmd);
-      case "LLEN"-> processCommandLlen(cmd);
+      case "LLEN" -> processCommandLlen(cmd);
+      case "LPOP" -> processCommandLpop(cmd);
       default -> RespUtility.buildErrorResponse("Invalid Command: " + cmd);
     };
   }
 
-    private String processCommandLlen(List<String> cmd) {
+  private String processCommandLpop(List<String> cmd) {
+    DataStoreValue data = datastore.get(cmd.get(1));
+    if (data == null) {
+      return RespUtility.serializeResponse(null);
+    }
+
+    try {
+      List<String> list = data.getAsList();
+      if (list == null) {
+        return RespUtility.buildErrorResponse("WRONGTYPE Operation against a key holding the wrong kind of value");
+      }
+
+      if (cmd.size() == 2) {
+        return list.isEmpty()
+                ? RespUtility.serializeResponse(null)
+                : RespUtility.serializeResponse(list.remove(0)); // removes first element
+      }
+
+      int count = Integer.parseInt(cmd.get(2));
+      List<String> responses = new ArrayList<>();
+      for (int i = 0; i < count && !list.isEmpty(); i++) {
+        responses.add(list.remove(0));
+      }
+      return RespUtility.serializeResponse(responses);
+
+    } catch (Exception e) {
+      System.out.println(e.getMessage());
+      return RespUtility.buildErrorResponse("WRONGTYPE Operation against a key holding the wrong kind of value");
+    }
+  }
+
+
+  private String processCommandLlen(List<String> cmd) {
       DataStoreValue data = datastore.get(cmd.get(1));
       if(data == null) {
         return RespUtility.serializeResponse(0);
