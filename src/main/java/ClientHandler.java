@@ -61,9 +61,22 @@ class ClientHandler implements Runnable {
       case "DISCARD" -> processCommandDiscard();
       case "RPUSH" -> processCommandRpush(cmd);
       case "LRANGE"-> processCommandLrange(cmd);
+      case "LPUSH" -> processCommandLpush(cmd);
       default -> RespUtility.buildErrorResponse("Invalid Command: " + cmd);
     };
   }
+
+    private String processCommandLpush(List<String> cmd) {
+        DataStoreValue data = datastore.get(cmd.get(1));
+        if(data == null) {
+            datastore.put(cmd.get(1), new DataStoreValue(cmd.subList(2, cmd.size())));
+            return RespUtility.serializeResponse(cmd.size()-2);
+        }
+        LinkedList<String> existingList = new LinkedList(data.getAsList());
+        cmd.subList(2, cmd.size()).forEach(e -> existingList.addFirst(e));
+        data.updateValue(existingList);
+        return RespUtility.serializeResponse(data.getAsList().size());
+    }
 
     private String processCommandLrange(List<String> cmd) {
         DataStoreValue data = datastore.get(cmd.get(1));
