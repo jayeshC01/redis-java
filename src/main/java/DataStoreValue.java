@@ -39,7 +39,7 @@ public class DataStoreValue {
     return isList() ? (List<String>) value : null;
   }
 
-  public Long getAsLong() {
+  public long getAsLong() {
     return Long.parseLong(String.valueOf(value));
   }
 }
