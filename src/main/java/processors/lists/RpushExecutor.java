@@ -21,11 +21,13 @@ public class RpushExecutor implements CommandExecutor {
       if (data == null) {
         List<String> values = cmd.getArgs().subList(1, cmd.getArgsSize());
         DataStore.put(key, new DataStoreValue(values));
+        DataStore.notifyWaiter(key);
         return RespUtility.serializeResponse(values.size());
       }
 
       List<String> existingList = data.getAsList();
       existingList.addAll(cmd.getArgs().subList(1, cmd.getArgsSize()));
+      DataStore.notifyWaiter(key);
       return RespUtility.serializeResponse(existingList.size());
     } catch (IllegalArgumentException e) {
       return RespUtility.buildErrorResponse(e.getMessage());

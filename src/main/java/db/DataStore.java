@@ -2,11 +2,14 @@ package db;
 
 import models.DataStoreValue;
 
+import java.util.LinkedList;
 import java.util.Map;
+import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class DataStore {
   public static final Map<String, DataStoreValue> store = new ConcurrentHashMap<>();
+  public static final Map<String, Queue<Thread>> waiterThreads = new ConcurrentHashMap<>();
 
   public static DataStoreValue get(String key) {
     return store.get(key);
@@ -22,6 +25,33 @@ public class DataStore {
 
   public static void remove(String key) {
     store.remove(key);
+  }
+
+  public static void notifyWaiter(String key) {
+    Queue<Thread> queue = waiterThreads.get(key);
+    if (queue != null) {
+      Thread lock = queue.poll();
+      if (lock != null) {
+        synchronized (lock) {
+          lock.notify();
+        }
+      }
+      if (queue.isEmpty()) {
+        waiterThreads.remove(key, queue);
+      }
+    }
+  }
+
+  public static void addWaiter(String key, Thread thread) {
+    waiterThreads.computeIfAbsent(key, k -> new LinkedList<>()).add(thread);
+  }
+
+  public static Queue<Thread> getWaiters(String key) {
+    return waiterThreads.get(key);
+  }
+
+  public static void cleanUpWaiter(String key) {
+    waiterThreads.remove(key);
   }
 
   public static void printDataStore() {

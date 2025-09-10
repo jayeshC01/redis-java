@@ -31,6 +31,7 @@ public class CommandProcessor {
       case "LRANGE" -> new LrangeExecutor().execute(cmd);
       case "LLEN" -> new LlenExecutor().execute(cmd);
       case "LPOP" -> new LpopExecutor().execute(cmd);
+      case "BLPOP" -> new BlpopExecutor().execute(cmd);
       default -> RespUtility.buildErrorResponse("Invalid Command: " + cmd);
     };
   }

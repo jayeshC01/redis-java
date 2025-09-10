@@ -26,6 +26,7 @@ public class LpushExecutor implements CommandExecutor {
           newList.add(valuesToPush.get(i));
         }
         DataStore.put(key, new DataStoreValue(newList));
+        DataStore.notifyWaiter(key);
         return RespUtility.serializeResponse(newList.size());
       }
 
@@ -36,6 +37,7 @@ public class LpushExecutor implements CommandExecutor {
       }
       updatedList.addAll(existingList);
       data.updateValue(updatedList);
+      DataStore.notifyWaiter(key);
       return RespUtility.serializeResponse(updatedList.size());
     } catch (IllegalArgumentException e) {
       return RespUtility.buildErrorResponse(e.getMessage());
