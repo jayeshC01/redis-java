@@ -1,3 +1,5 @@
+package models;
+
 import java.util.*;
 
 public class DataStoreValue {
@@ -31,15 +33,33 @@ public class DataStoreValue {
   }
 
   public String getAsString() {
-    return isString() ? (String) value : null;
+    if (!isString()) {
+      throw new IllegalStateException(
+          "WRONGTYPE Operation against a value of wrong type");
+    }
+    return (String) value;
   }
 
   @SuppressWarnings("unchecked")
   public List<String> getAsList() {
-    return isList() ? (List<String>) value : null;
+    if (!isList()) {
+      throw new IllegalStateException(
+          "WRONGTYPE Operation against a value of wrong type"
+      );
+    }
+    return (List<String>) value;
   }
 
   public long getAsLong() {
-    return Long.parseLong(String.valueOf(value));
+    if (!(value instanceof String)) {
+      throw new IllegalStateException(
+          "WRONGTYPE Operation against a key holding the wrong kind of value"
+      );
+    }
+    try {
+      return Long.parseLong((String) value);
+    } catch (NumberFormatException e) {
+      throw new NumberFormatException("value is not an integer or out of range");
+    }
   }
 }
