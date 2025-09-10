@@ -4,6 +4,7 @@ import models.RespCommand;
 import processors.connections.*;
 import processors.lists.*;
 import processors.streams.TypeExecutor;
+import processors.streams.XaddExecutor;
 import processors.strings.*;
 import processors.transactions.*;
 import utility.RespUtility;
@@ -34,6 +35,7 @@ public class CommandProcessor {
       case "LPOP" -> new LpopExecutor().execute(cmd);
       case "BLPOP" -> new BlpopExecutor().execute(cmd);
       case "TYPE" -> new TypeExecutor().execute(cmd);
+      case "XADD" -> new XaddExecutor().execute(cmd);
       default -> RespUtility.buildErrorResponse("Invalid Command: " + cmd);
     };
   }

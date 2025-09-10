@@ -35,8 +35,7 @@ public class DataStoreValue {
 
   public String getAsString() {
     if (!isString()) {
-      throw new IllegalStateException(
-          "WRONGTYPE Operation against a value of wrong type");
+      throw new IllegalStateException("WRONGTYPE Operation against a value of wrong type");
     }
     return (String) value;
   }
@@ -44,24 +43,28 @@ public class DataStoreValue {
   @SuppressWarnings("unchecked")
   public List<String> getAsList() {
     if (!isList()) {
-      throw new IllegalStateException(
-          "WRONGTYPE Operation against a value of wrong type"
-      );
+      throw new IllegalStateException("WRONGTYPE Operation against a value of wrong type");
     }
     return (List<String>) value;
   }
 
   public long getAsLong() {
     if (!(value instanceof String)) {
-      throw new IllegalStateException(
-          "WRONGTYPE Operation against a key holding the wrong kind of value"
-      );
+      throw new IllegalStateException("WRONGTYPE Operation against a key holding the wrong kind of value");
     }
     try {
       return Long.parseLong((String) value);
     } catch (NumberFormatException e) {
       throw new NumberFormatException("value is not an integer or out of range");
     }
+  }
+
+  @SuppressWarnings("unchecked")
+  public ConcurrentNavigableMap<String, Map<String, String>> getAsStream() {
+    if (value instanceof ConcurrentNavigableMap<?, ?>) {
+      return (ConcurrentNavigableMap<String, Map<String, String>>) value;
+    }
+    throw new IllegalStateException("WRONGTYPE Operation against a key holding the wrong kind of value");
   }
 
   public String getValueType() {
@@ -71,6 +74,8 @@ public class DataStoreValue {
       return "list";
     } else if (value instanceof Set) {
       return "set";
+    } else if (value instanceof ConcurrentNavigableMap<?,?>) {
+      return "stream";
     }
     return "undefined";
   }
