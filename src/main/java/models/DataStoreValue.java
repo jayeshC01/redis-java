@@ -1,6 +1,7 @@
 package models;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentNavigableMap;
 
 public class DataStoreValue {
   private Object value;
@@ -61,5 +62,16 @@ public class DataStoreValue {
     } catch (NumberFormatException e) {
       throw new NumberFormatException("value is not an integer or out of range");
     }
+  }
+
+  public String getValueType() {
+    if (value instanceof String || value instanceof Number) {
+      return "string";
+    } else if (value instanceof List) {
+      return "list";
+    } else if (value instanceof Set) {
+      return "set";
+    }
+    return "undefined";
   }
 }

@@ -3,6 +3,7 @@ package processors;
 import models.RespCommand;
 import processors.connections.*;
 import processors.lists.*;
+import processors.streams.TypeExecutor;
 import processors.strings.*;
 import processors.transactions.*;
 import utility.RespUtility;
@@ -32,6 +33,7 @@ public class CommandProcessor {
       case "LLEN" -> new LlenExecutor().execute(cmd);
       case "LPOP" -> new LpopExecutor().execute(cmd);
       case "BLPOP" -> new BlpopExecutor().execute(cmd);
+      case "TYPE" -> new TypeExecutor().execute(cmd);
       default -> RespUtility.buildErrorResponse("Invalid Command: " + cmd);
     };
   }
