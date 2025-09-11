@@ -5,6 +5,7 @@ import models.RespCommand;
 import java.lang.*;
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.stream.Collectors;
 
 public class RespUtility {
@@ -74,5 +75,23 @@ public class RespUtility {
       return "*" + serialized.size() + "\r\n" + String.join("", serialized);
     }
     return "$-1\r\n"; // default null bulk string response
+  }
+
+  public static String serializeStreamResponse(ConcurrentNavigableMap<String, Map<String, String>> output) {
+    StringBuilder response = new StringBuilder();
+    response.append("*").append(output.size()).append("\r\n");
+
+    output.forEach((k, v) -> {
+      String serialisedKey = serializeResponse(k);
+      List<String> values = new ArrayList<>();
+      v.forEach((field,value) -> {
+        values.add(field);
+        values.add(value);
+      });
+      String serialisedValues = serializeResponse(values);
+      String serialisedEntry = "*2\r\n".concat(serialisedKey).concat(serialisedValues);
+      response.append(serialisedEntry);
+    });
+    return response.toString();
   }
 }
