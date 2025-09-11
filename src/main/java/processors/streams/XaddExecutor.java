@@ -18,9 +18,9 @@ public class XaddExecutor implements CommandExecutor {
   public String execute(RespCommand cmd) {
     String key = cmd.getKey();
     List<String> args = cmd.getArgs().subList(1, cmd.getArgsSize());
-
-    String entryID = args.get(0);
+    String entryID = args.getFirst();
     Map<String, String> entryValue = new HashMap<>();
+
     for (int i = 1; i < args.size(); i += 2) {
       entryValue.put(args.get(i), args.get(i + 1));
     }
@@ -38,15 +38,45 @@ public class XaddExecutor implements CommandExecutor {
       }
     }
 
-    if (!entryID.matches("\\d+-\\d+")) {
-      return RespUtility.buildErrorResponse("invalid stream ID format");
-    }
-
-    if (stream.containsKey(entryID)) {
-      return RespUtility.buildErrorResponse("duplicate ID");
+    try {
+      validateStreamID(entryID, stream);
+    } catch(IllegalArgumentException e) {
+      return RespUtility.buildErrorResponse(e.getMessage());
     }
 
     stream.put(entryID, entryValue);
     return RespUtility.serializeResponse(entryID);
+  }
+
+  private void validateStreamID(String entryID, ConcurrentNavigableMap<String, Map<String, String>> stream) {
+    if (!entryID.matches("\\d+-\\d+")) {
+      throw new IllegalArgumentException("invalid stream ID format");
+    }
+
+    String[] parts = entryID.split("-");
+    long ms = Long.parseLong(parts[0]);
+    long seq = Long.parseLong(parts[1]);
+
+    if (ms == 0 && seq == 0) {
+      throw new IllegalArgumentException("The ID specified in XADD must be greater than 0-0");
+    }
+
+    if (!stream.isEmpty()) {
+      String lastId = stream.lastKey();
+      if (!isGreater(entryID, lastId)) {
+        throw new IllegalArgumentException("The ID specified in XADD is equal or smaller than the target stream top item");
+      }
+    }
+  }
+
+  private boolean isGreater(String newId, String oldId) {
+    String[] newParts = newId.split("-");
+    String[] oldParts = oldId.split("-");
+    long newMs = Long.parseLong(newParts[0]);
+    long newSeq = Long.parseLong(newParts[1]);
+    long oldMs = Long.parseLong(oldParts[0]);
+    long oldSeq = Long.parseLong(oldParts[1]);
+
+    return (newMs > oldMs) || (newMs == oldMs && newSeq > oldSeq);
   }
 }
