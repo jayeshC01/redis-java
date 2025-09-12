@@ -6,6 +6,7 @@ import processors.lists.*;
 import processors.streams.TypeExecutor;
 import processors.streams.XaddExecutor;
 import processors.streams.XrangeExecutor;
+import processors.streams.XreadExecutor;
 import processors.strings.*;
 import processors.transactions.*;
 import utility.RespUtility;
@@ -38,6 +39,7 @@ public class CommandProcessor {
       case "TYPE" -> new TypeExecutor().execute(cmd);
       case "XADD" -> new XaddExecutor().execute(cmd);
       case "XRANGE" -> new XrangeExecutor().execute(cmd);
+      case "XREAD" -> new XreadExecutor().execute(cmd);
       default -> RespUtility.buildErrorResponse("Invalid Command: " + cmd);
     };
   }
