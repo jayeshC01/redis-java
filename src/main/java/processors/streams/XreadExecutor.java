@@ -19,26 +19,10 @@ public class XreadExecutor implements CommandExecutor {
       validateCommand(cmd);
 
       List<String> args = cmd.getArgs();
-      int blockMs = -1;
-      int blockIndex = indexOfIgnoreCase(args, "BLOCK");
-      if (blockIndex != -1 && blockIndex + 1 < args.size()) {
-        try {
-          blockMs = Integer.parseInt(args.get(blockIndex + 1));
-        } catch (NumberFormatException e) {
-          return RespUtility.buildErrorResponse("invalid BLOCK timeout");
-        }
-      }
-
       int startOfStreams = indexOfIgnoreCase(args, "STREAMS");
-      if (startOfStreams == -1 || startOfStreams == args.size() - 1) {
-        return RespUtility.buildErrorResponse("syntax error");
-      }
-
+      int startOfBlock = indexOfIgnoreCase(args, "BLOCK");
+      long blockMs = startOfBlock != -1 ? Long.parseLong(args.get(startOfBlock+1)) : 0;
       List<String> streamsAndIDs = args.subList(startOfStreams + 1, args.size());
-      if (streamsAndIDs.size() % 2 != 0) {
-        return RespUtility.buildErrorResponse("wrong number of arguments for STREAMS");
-      }
-
       List<String> streamKeys = streamsAndIDs.subList(0, streamsAndIDs.size() / 2);
       List<String> ids = streamsAndIDs.subList(streamsAndIDs.size() / 2, streamsAndIDs.size());
       long deadline = (blockMs > 0) ? System.currentTimeMillis() + blockMs : Long.MAX_VALUE;
@@ -94,26 +78,45 @@ public class XreadExecutor implements CommandExecutor {
           Thread.sleep(Math.min(100, remaining));
         }
       }
-    } catch (IllegalArgumentException | IllegalStateException e) {
-      return RespUtility.buildErrorResponse(e.getMessage());
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       return "*-1\r\n";
+    } catch (Exception e) {
+      return RespUtility.buildErrorResponse(e.getMessage());
     }
   }
 
   private void validateCommand(RespCommand cmd) {
     List<String> args = cmd.getArgs();
-    int startOfStreams = indexOfIgnoreCase(args, "STREAMS");
-    if (startOfStreams == -1 || startOfStreams == args.size() - 1) {
-      throw new IllegalArgumentException("syntax error");
+
+    int blockIndex = indexOfIgnoreCase(args, "BLOCK");
+    if (blockIndex != -1) {
+      if (blockIndex + 1 >= args.size()) {
+        throw new IllegalArgumentException("Invalid BLOCK option - time not defined");
+      }
+      String blockTime = args.get(blockIndex + 1);
+      try {
+        Long.parseLong(blockTime);
+      } catch (NumberFormatException e) {
+        throw new IllegalArgumentException("Invalid BLOCK time - must be a number", e);
+      }
     }
 
-    List<String> streamsAndIDs = args.subList(startOfStreams + 1, args.size());
+    int streamsIndex = indexOfIgnoreCase(args, "STREAMS");
+    if (streamsIndex == -1 || streamsIndex == args.size() - 1) {
+      throw new IllegalArgumentException("syntax error - STREAMS must be followed by arguments");
+    }
+
+    if (blockIndex != -1 && blockIndex >= streamsIndex) {
+      throw new IllegalArgumentException("Invalid syntax - BLOCK must appear before STREAMS");
+    }
+
+    List<String> streamsAndIDs = args.subList(streamsIndex + 1, args.size());
     if (streamsAndIDs.size() % 2 != 0) {
       throw new IllegalArgumentException("wrong number of arguments for STREAMS");
     }
   }
+
 
   private int indexOfIgnoreCase(List<String> args, String target) {
     for (int i = 0; i < args.size(); i++) {
