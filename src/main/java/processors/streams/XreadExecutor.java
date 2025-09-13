@@ -56,6 +56,18 @@ public class XreadExecutor implements CommandExecutor {
           }
 
           ConcurrentNavigableMap<String, Map<String, String>> streamData = value.getAsStream();
+
+          if ("$".equals(streamId)) {
+            if (streamData.isEmpty()) {
+              System.out.println("Inside $ check empty stream");
+              streamId = "0-0";
+            } else {
+              System.out.println("Inside $ check last key stream set" + streamData.lastKey());
+              streamId = streamData.lastKey();
+            }
+          }
+          ids.set(i, streamId); // Updating the $ in stream key with top most ID
+
           ConcurrentNavigableMap<String, Map<String, String>> filtered = streamData.tailMap(streamId, false);
 
           if (!filtered.isEmpty()) {
@@ -75,9 +87,18 @@ public class XreadExecutor implements CommandExecutor {
         if (blockMs == -1 || (blockMs > 0 && System.currentTimeMillis() >= deadline)) {
           return "*-1\r\n";
         }
+
+        // Adding delay to avoid continuous look up
+        long remaining = deadline - System.currentTimeMillis();
+        if (remaining > 0) {
+          Thread.sleep(Math.min(100, remaining));
+        }
       }
     } catch (IllegalArgumentException | IllegalStateException e) {
       return RespUtility.buildErrorResponse(e.getMessage());
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      return "*-1\r\n";
     }
   }
 
