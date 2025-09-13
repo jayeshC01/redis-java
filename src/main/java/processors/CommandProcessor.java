@@ -3,6 +3,7 @@ package processors;
 import models.RespCommand;
 import processors.connections.*;
 import processors.lists.*;
+import processors.rdb.ConfigExecutor;
 import processors.streams.TypeExecutor;
 import processors.streams.XaddExecutor;
 import processors.streams.XrangeExecutor;
@@ -40,6 +41,7 @@ public class CommandProcessor {
       case "XADD" -> new XaddExecutor().execute(cmd);
       case "XRANGE" -> new XrangeExecutor().execute(cmd);
       case "XREAD" -> new XreadExecutor().execute(cmd);
+      case "CONFIG" -> new ConfigExecutor().execute(cmd);
       default -> RespUtility.buildErrorResponse("Invalid Command: " + cmd);
     };
   }

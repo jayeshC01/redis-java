@@ -1,3 +1,4 @@
+import config.ConfigProcessor;
 import server.ClientHandler;
 
 import java.io.IOException;
@@ -8,7 +9,6 @@ public class Main {
   public static void main(String[] args){
     // You can use print statements as follows for debugging, they'll be visible when running tests.
     System.out.println("Logs from your program will appear here!");
-
     ServerSocket serverSocket = null;
     Socket clientSocket = null;
     int port = 6379;
@@ -16,6 +16,7 @@ public class Main {
       serverSocket = new ServerSocket(port);
       serverSocket.setReuseAddress(true);
       System.out.println("Redis server active on port "+port);
+      ConfigProcessor.processAndStoreConfig(args);
       while(true) {
         // Wait for connection from client.
         clientSocket = serverSocket.accept();
