@@ -1,34 +1,80 @@
-[![progress-banner](https://backend.codecrafters.io/progress/redis/44767383-bae8-4097-a9ee-75399d1ff8f5)](https://app.codecrafters.io/users/codecrafters-bot?r=2qF)
+# Redis-Java
 
-This is a starting point for Java solutions to the
-["Build Your Own Redis" Challenge](https://codecrafters.io/challenges/redis).
+A simple, educational Redis-like in-memory datastore implemented in Java. Inspired by [Redis](https://redis.io/), this project aims to demonstrate core Redis concepts such as RESP protocol, Redis Commands, and concurrent client handling.
 
-In this challenge, you'll build a toy Redis clone that's capable of handling
-basic commands like `PING`, `SET` and `GET`. Along the way we'll learn about
-event loops, the Redis protocol and more.
+CodeCrafter Profile: https://app.codecrafters.io/users/jayeshC01
 
-**Note**: If you're viewing this repo on GitHub, head over to
-[codecrafters.io](https://codecrafters.io) to try the challenge.
+---
 
-# Passing the first stage
+## Highlights
 
-The entry point for your Redis implementation is in `src/main/java/Main.java`.
-Study and uncomment the relevant code, and push your changes to pass the first
-stage:
+- **Multi-client Support**: Handles multiple concurrent TCP clients.
+- **RESP Protocol**: Fully parses and responds using the [Redis Serialization Protocol (RESP)](https://redis.io/docs/reference/protocol-spec/).
+- **Thread-safe In-memory Store**: Uses concurrent data structures.
+- **Easy Local Testing**: Run and test with common tools (`nc`, `telnet`).
+- **Extensible Command Processing**: Modular design for adding new commands.
+- **Stream and RDB support**: Includes stream commands and basic config handling.
 
-```sh
-git commit -am "pass 1st stage" # any msg
-git push origin master
-```
+---
 
-That's all!
+## Local Testing & Usage
 
-# Stage 2 & beyond
+1. **Build & Run**
+   ```sh
+   mvn clean package
+   ./your_program.sh
+   ```
+   By default, the server listens on port `6379`.
 
-Note: This section is for stages 2 and beyond.
+   **RDB Persistence:**  
+   You can specify the directory and DB filename for RDB persistence by passing arguments:
+   ```sh
+   ./your_program.sh --dir <directory_path> --dbfilename <filename>
+   ```
+   Example:
+   ```sh
+   ./your_program.sh --dir ./data --dbfilename dump.rdb
+   ```
 
-1. Ensure you have `mvn` installed locally
-1. Run `./your_program.sh` to run your Redis server, which is implemented in
-   `src/main/java/Main.java`.
-1. Commit your changes and run `git push origin master` to submit your solution
-   to CodeCrafters. Test output will be streamed to your terminal.
+2. **Sending Commands (RESP Format Required!)**
+
+   This server expects commands in RESP format.  
+   Example: The command `ECHO hi` must be sent as:
+   ```
+   *2\r\n$4\r\nECHO\r\n$2\r\nhi\r\n
+   ```
+
+   **Send via netcat:**
+   ```sh
+   printf '*2\r\n$4\r\nECHO\r\n$2\r\nhi\r\n' | nc -v localhost:6379
+   ```
+
+   For details on RESP, see:  
+   [Redis Protocol Specification](https://redis.io/docs/reference/protocol-spec/)
+
+---
+
+## Implemented Command List
+
+| Category        | Commands                                                                                                 |
+|-----------------|---------------------------------------------------------------------------------------------------------|
+| Basic           | `PING`, `ECHO`                                                                                          |
+| Strings         | `SET`, `GET`, `INCR`                                                                                    |
+| Lists           | `LPUSH`, `RPUSH`, `LLEN`, `LRANGE`, `LPOP`, `BLPOP`                                                     |
+| Transactions    | `MULTI`, `EXEC`, `DISCARD`                                                                              |
+| Streams         | `XADD`, `XRANGE`, `XREAD`                                                                               |
+| Other           | `TYPE`, `CONFIG`                                                                                        |
+
+---
+
+## Project Structure
+
+- `src/main/java/Main.java` — Entry point, TCP server.
+- `src/main/java/processors/` — Command implementations.
+- `src/main/java/db/` — In-memory data store.
+
+---
+
+## License
+
+For educational use only.
