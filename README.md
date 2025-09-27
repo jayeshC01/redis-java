@@ -33,7 +33,7 @@ CodeCrafter Profile: https://app.codecrafters.io/users/jayeshC01
    ```
    Example:
    ```sh
-   ./your_program.sh --dir ./data --dbfilename dump.rdb
+   ./your_program.sh --dir ./data --dbfilename db.rdb
    ```
 
 2. **Sending Commands (RESP Format Required!)**
