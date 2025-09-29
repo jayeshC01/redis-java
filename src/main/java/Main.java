@@ -12,11 +12,14 @@ public class Main {
     // You can use print statements as follows for debugging, they'll be visible when running tests.
     System.out.println("Logs from your program will appear here!");
     Socket clientSocket = null;
-    int port = 6379;
+    ConfigProcessor.processAndStoreConfig(args);
+    final int DEFAULT_PORT = 6379;
+    int port = DataStore.getConfig("port") != null ?
+        Integer.parseInt(DataStore.getConfig("port")) : DEFAULT_PORT;
+
     try(ServerSocket serverSocket = new ServerSocket(port)) {
       serverSocket.setReuseAddress(true);
       System.out.println("Redis server active on port "+port);
-      ConfigProcessor.processAndStoreConfig(args);
       if(DataStore.configs.get("dbfilename") != null) {
         System.out.println("Datastore configs are : "+ DataStore.configs);
         RdbLoader.loadDatabase();
