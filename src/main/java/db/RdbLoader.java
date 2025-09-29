@@ -34,9 +34,10 @@ public class RdbLoader {
       }
 
       int data;
+      long expiry = 0;
       while ((data = fis.read()) != -1) {
-        System.out.println("Data :"+data);
-        if(data == 0xFF) {
+        System.out.println("Data :" + data);
+        if (data == 0xFF) {
           System.out.println("End of RDB file reached");
           break;
         }
@@ -46,8 +47,20 @@ public class RdbLoader {
           skipMetadata(fis);
           continue;
         }
-        if(data == 0XFE) {
+        if (data == 0XFE) {
           processDBSection(fis);
+          continue;
+        }
+
+        if (data == 0xFC) { // expiry in milliseconds
+          byte[] expiryBytes = fis.readNBytes(8);
+          expiry = bytesToLong(expiryBytes);
+          System.out.println("key expiry (ms): " + expiry);
+          continue;
+        } else if (data == 0xFD) { // expiry in seconds
+          byte[] expiryBytes = fis.readNBytes(4);
+          expiry = bytesToLong(expiryBytes) * 1000;
+          System.out.println("Key expiry (s->ms): " + expiry);
           continue;
         }
 
@@ -55,8 +68,13 @@ public class RdbLoader {
         String keyValue = readData(fis, keyLength);
         int dataLength = readLength(fis, Optional.empty());
         String dataValue = readData(fis, dataLength);
-        System.out.println("Key: "+keyValue+"    Value: "+dataValue);
-        DataStore.store.put(keyValue, new DataStoreValue(dataValue));
+        System.out.println("Key: " + keyValue + "    Value: " + dataValue);
+        if (expiry != 0) {
+          DataStore.store.put(keyValue, new DataStoreValue(dataValue, expiry));
+          expiry = 0;
+        } else {
+          DataStore.store.put(keyValue, new DataStoreValue(dataValue));
+        }
       }
     } catch (IOException e) {
       System.out.println("Error Loading DB. Starting with empty DB");
@@ -149,7 +167,15 @@ public class RdbLoader {
     byte[] bytes = fis.readNBytes(length);
 
     String data = new String(bytes, StandardCharsets.UTF_8);
-    System.out.println("ReadString dataa :"+data);
+    System.out.println("ReadString data :"+data);
     return data;
+  }
+
+  private static long bytesToLong(byte[] bytes) {
+    long value = 0;
+    for (int i = 0; i < bytes.length; i++) {
+      value |= ((long)(bytes[i] & 0xFF)) << (8 * i);
+    }
+    return value;
   }
 }
