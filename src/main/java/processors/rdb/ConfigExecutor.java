@@ -1,9 +1,9 @@
 package processors.rdb;
 
-import db.DataStore;
 import models.RespCommand;
 import processors.CommandExecutor;
 import utility.RespUtility;
+import static config.ConfigProcessor.configs;
 
 import java.util.Collections;
 import java.util.HashSet;
@@ -23,7 +23,7 @@ public class ConfigExecutor implements CommandExecutor {
       String configOption = args.getFirst();
       if(configOption.equalsIgnoreCase("GET")) {
         String configProperty = args.get(1);
-        String configValue = DataStore.getConfig(configProperty);
+        String configValue = configs.get(configProperty);
         if(configValue != null) {
           return RespUtility.serializeResponse(List.of(configProperty, configValue));
         }

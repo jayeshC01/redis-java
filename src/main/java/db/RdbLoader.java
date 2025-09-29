@@ -1,6 +1,7 @@
 package db;
 
 import models.DataStoreValue;
+import static config.ConfigProcessor.configs;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -12,8 +13,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class RdbLoader {
   public static void loadDatabase() throws IOException {
-    String dir = DataStore.configs.get("dir");
-    String dbFileName = DataStore.configs.get("dbfilename");
+    String dir = configs.get("dir");
+    String dbFileName = configs.get("dbfilename");
     System.out.println("Datastore configs fetched :"+dir+" file:"+dbFileName);
 
     // File file = new File("/Users/jayeshc/XProjects/codecrafters-redis-java/src/main/java/db/dbFile.rdb");

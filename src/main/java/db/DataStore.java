@@ -10,7 +10,6 @@ import java.util.concurrent.ConcurrentHashMap;
 public class DataStore {
   public static final Map<String, DataStoreValue> store = new ConcurrentHashMap<>();
   public static final Map<String, Queue<Thread>> waiterThreads = new ConcurrentHashMap<>();
-  public static final Map<String, String> configs = new ConcurrentHashMap<>();
 
   public static DataStoreValue get(String key) {
     return store.get(key);
@@ -53,10 +52,6 @@ public class DataStore {
 
   public static void cleanUpWaiter(String key) {
     waiterThreads.remove(key);
-  }
-
-  public static String getConfig(String config) {
-    return configs.get(config);
   }
 
   public static void printDataStore() {
