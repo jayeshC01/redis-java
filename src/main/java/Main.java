@@ -1,8 +1,10 @@
+import static config.ConfigProcessor.configs;
+import static utility.Constants.*;
+
 import config.ConfigProcessor;
 import db.DataStore;
 import db.RdbLoader;
 import server.ClientHandler;
-import static config.ConfigProcessor.configs;
 
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -14,14 +16,14 @@ public class Main {
     System.out.println("Logs from your program will appear here!");
     Socket clientSocket = null;
     ConfigProcessor.processAndStoreConfig(args);
-    final int DEFAULT_PORT = 6379;
-    int port = configs.get("port") != null ?
-        Integer.parseInt(configs.get("port")) : DEFAULT_PORT;
+
+    int port = configs.get(PORT) != null ?
+        Integer.parseInt(configs.get(PORT)) : DEFAULT_PORT;
 
     try(ServerSocket serverSocket = new ServerSocket(port)) {
       serverSocket.setReuseAddress(true);
       System.out.println("Redis server active on port "+port);
-      if(configs.get("dbfilename") != null && configs.get("dir") != null) {
+      if(configs.get(DB_FILENAME) != null && configs.get(DB_DIR) != null) {
         RdbLoader.loadDatabase();
       }
       DataStore.printDataStore();

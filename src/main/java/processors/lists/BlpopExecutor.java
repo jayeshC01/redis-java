@@ -23,7 +23,7 @@ public class BlpopExecutor implements CommandExecutor {
         timeoutSeconds = Double.parseDouble(cmd.getArgs().get(1));
         timeoutMillis = (long) (timeoutSeconds * 1000);
       } catch (NumberFormatException e) {
-        return RespUtility.buildErrorResponse("ERR timeout is not a float or integer");
+        return RespUtility.buildErrorResponse("timeout is not a float or integer");
       }
 
       DataStoreValue data = DataStore.get(key);
