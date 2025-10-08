@@ -4,6 +4,7 @@ import models.RespCommand;
 import utility.RespUtility;
 import java.io.*;
 import java.net.Socket;
+import java.util.List;
 
 import static config.ConfigProcessor.configs;
 import static utility.Constants.*;
@@ -29,8 +30,20 @@ public class ReplicationManager {
 
         RespCommand pingCommand = new RespCommand("PING");
         System.out.println("[REPL] Sending PING to master for handshake..."+pingCommand.getStringRepresentation());
-        System.out.println(RespUtility.serializeCommand(pingCommand));
         writer.write(RespUtility.serializeCommand(pingCommand));
+        writer.flush();
+        System.out.println(reader.readLine());
+
+        RespCommand replConf1 = new RespCommand("REPLCONF",
+            List.of("listening-port", String.valueOf(configs.get(PORT))));
+
+        //TODO: Hardcoded for now, will be dynamic later
+        RespCommand replConf2 = new RespCommand("REPLCONF",
+            List.of("capa", "psync2"));
+        
+        writer.write(RespUtility.serializeCommand(replConf1));
+        writer.flush();
+        writer.write(RespUtility.serializeCommand(replConf2));
         writer.flush();
       } catch (IOException e) {
         System.out.println("[REPL] Error during replication handshake: " + e.getMessage());

@@ -27,7 +27,7 @@ public class Main {
 
     try(ServerSocket serverSocket = new ServerSocket(port)) {
       serverSocket.setReuseAddress(true);
-      System.out.println("[Master] Redis server active on port "+port);
+      System.out.printf("[%s] Redis server active on port %d%n", configs.get(ROLE), port);
       if(configs.get(DB_FILENAME) != null && configs.get(DB_DIR) != null) {
         RdbLoader.loadDatabase();
       }

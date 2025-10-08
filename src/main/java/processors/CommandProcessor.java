@@ -6,6 +6,7 @@ import processors.lists.*;
 import processors.rdb.ConfigExecutor;
 import processors.rdb.KeysExecutor;
 import processors.replication.InfoExecutor;
+import processors.replication.ReplconfExecutor;
 import processors.streams.TypeExecutor;
 import processors.streams.XaddExecutor;
 import processors.streams.XrangeExecutor;
@@ -46,6 +47,7 @@ public class CommandProcessor {
       case "CONFIG" -> new ConfigExecutor().execute(cmd);
       case "KEYS" -> new KeysExecutor().execute(cmd);
       case "INFO" -> new InfoExecutor().execute(cmd);
+      case "REPLCONF" -> new ReplconfExecutor().execute(cmd);
       default -> RespUtility.buildErrorResponse("Invalid Command: " + cmd);
     };
   }
