@@ -27,23 +27,40 @@ public class ReplicationManager {
            BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()))) {
 
         System.out.println("[REPL] Connected to master " + masterHost + ":" + masterPort);
+        System.out.println("[REPL] Starting replication handshake...");
 
         RespCommand pingCommand = new RespCommand("PING");
-        System.out.println("[REPL] Sending PING to master for handshake..."+pingCommand.getStringRepresentation());
         writer.write(RespUtility.serializeCommand(pingCommand));
         writer.flush();
-        System.out.println(reader.readLine());
+        String pingResponse = reader.readLine();
+        if (!pingResponse.equals("+PONG")) {
+          System.out.println("[REPL] Error: Unexpected PING response from master: " + pingResponse);
+          return;
+        }
 
         RespCommand replConf1 = new RespCommand("REPLCONF",
             List.of("listening-port", String.valueOf(configs.get(PORT))));
+        writer.write(RespUtility.serializeCommand(replConf1));
+        writer.flush();
+        String response2 = reader.readLine();
+        if (!response2.equals("+OK")) {
+          System.out.println("[REPL] Error: REPLCONF listening-port failed: " + response2);
+          return;
+        }
 
         //TODO: Hardcoded for now, will be dynamic later
         RespCommand replConf2 = new RespCommand("REPLCONF",
             List.of("capa", "psync2"));
-        
-        writer.write(RespUtility.serializeCommand(replConf1));
-        writer.flush();
         writer.write(RespUtility.serializeCommand(replConf2));
+        writer.flush();
+        String response3 = reader.readLine();
+        if (!response3.equals("+OK")) {
+          System.out.println("[REPL] Error: REPLCONF capa failed: " + response3);
+          return;
+        }
+
+        RespCommand psyncCommand = new RespCommand("PSYNC", List.of("?", "-1"));
+        writer.write(RespUtility.serializeCommand(psyncCommand));
         writer.flush();
       } catch (IOException e) {
         System.out.println("[REPL] Error during replication handshake: " + e.getMessage());
