@@ -1,5 +1,6 @@
 package models;
 
+import java.util.Collections;
 import java.util.List;
 
 public class RespCommand {
@@ -9,6 +10,11 @@ public class RespCommand {
   public RespCommand(String name, List<String> args) {
     this.name = name;
     this.args = args;
+  }
+
+  public RespCommand(String name) {
+    this.name = name;
+    this.args = Collections.emptyList();
   }
 
   public List<String> getArgs() {

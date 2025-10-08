@@ -94,4 +94,16 @@ public class RespUtility {
     });
     return response.toString();
   }
+
+  public static String serializeCommand(RespCommand command) {
+    StringBuilder sb = new StringBuilder();
+    sb.append("*").append(command.getArgs().size() + 1).append("\r\n");
+    sb.append("$").append(command.getName().length()).append("\r\n");
+    sb.append(command.getName()).append("\r\n");
+    for (String arg : command.getArgs()) {
+      sb.append("$").append(arg.length()).append("\r\n");
+      sb.append(arg).append("\r\n");
+    }
+    return sb.toString();
+  }
 }

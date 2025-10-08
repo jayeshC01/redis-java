@@ -5,6 +5,7 @@ import config.ConfigProcessor;
 import db.DataStore;
 import db.RdbLoader;
 import server.ClientHandler;
+import server.ReplicationManager;
 
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -20,9 +21,13 @@ public class Main {
     int port = configs.get(PORT) != null ?
         Integer.parseInt(configs.get(PORT)) : DEFAULT_PORT;
 
+    if (ROLE_SLAVE.equalsIgnoreCase(configs.get(ROLE))) {
+      ReplicationManager.startSlaveReplication();
+    }
+
     try(ServerSocket serverSocket = new ServerSocket(port)) {
       serverSocket.setReuseAddress(true);
-      System.out.println("Redis server active on port "+port);
+      System.out.println("[Master] Redis server active on port "+port);
       if(configs.get(DB_FILENAME) != null && configs.get(DB_DIR) != null) {
         RdbLoader.loadDatabase();
       }
