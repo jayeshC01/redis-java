@@ -48,6 +48,7 @@ public class CommandProcessor {
       case "KEYS" -> new KeysExecutor().execute(cmd);
       case "INFO" -> new InfoExecutor().execute(cmd);
       case "REPLCONF" -> new ReplconfExecutor().execute(cmd);
+      case "PSYNC" -> new processors.replication.PsyncExecutor().execute(cmd);
       default -> RespUtility.buildErrorResponse("Invalid Command: " + cmd);
     };
   }
