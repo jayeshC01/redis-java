@@ -2,6 +2,7 @@ package server;
 
 import models.RespCommand;
 import processors.CommandProcessor;
+import processors.replication.PsyncExecutor;
 import utility.RespUtility;
 
 import java.io.*;
@@ -25,13 +26,23 @@ public class ClientHandler implements Runnable {
       BufferedWriter writer =
           new BufferedWriter(
               new OutputStreamWriter(clientSocket.getOutputStream()));
+
+      OutputStream rawOutputStream = clientSocket.getOutputStream();
       while(true) {
         RespCommand cmd = RespUtility.parseRespCommand(reader);
         System.out.println("Executing Command: " + cmd.getStringRepresentation());
-        String response = commandProcessor.processCommand(cmd);
-        System.out.println("Response Send: " + response);
-        writer.write(response);
-        writer.flush();
+        //TODO: Update the write to handle writing raw bytes as well as strings
+        if(cmd.getName().equalsIgnoreCase("PSYNC")) {
+          byte[] responseBytes = new PsyncExecutor().execute(cmd);
+          rawOutputStream.write(responseBytes);
+          rawOutputStream.flush();
+        }
+        else {
+          String response = commandProcessor.processCommand(cmd);
+          System.out.println("Response Send: " + response);
+          writer.write(response);
+          writer.flush();
+        }
       }
     } catch (IOException e) {
       System.out.println("IOException: " + e.getMessage());
