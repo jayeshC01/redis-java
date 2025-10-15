@@ -4,6 +4,7 @@ import models.RespCommand;
 import utility.RespUtility;
 import java.io.*;
 import java.net.Socket;
+import java.util.Arrays;
 import java.util.List;
 
 import static config.ConfigProcessor.configs;
@@ -39,8 +40,10 @@ public class ReplicationManager {
       if(handShakePerform) {
         System.out.println("[REPL] Handshake part completed, waiting for RDB file...");
       } else {
-        System.out.println("[REPL] Handshake failed, Retrying...");
+        System.out.println("[REPL] Handshake failed...");
+        return;
       }
+      readRDBFile(socket.getInputStream());
     } catch (IOException e) {
       System.out.println("[REPL] Error during replication handshake: " + e.getMessage());
     }
@@ -90,6 +93,31 @@ public class ReplicationManager {
       return false;
     }
     return true;
+  }
+
+  private static void readRDBFile(InputStream inputStream) {
+    try {
+      BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+
+      String header = reader.readLine();
+      if (!header.startsWith("$")) {
+        System.out.println("[REPL] Error: Invalid RDB length line: " + header);
+        return;
+      }
+      int rdbLength = Integer.parseInt(header.substring(1));
+      System.out.println("[REPL] RDB file length: " + rdbLength);
+
+      byte[] rdbData = inputStream.readNBytes(rdbLength);
+      if (rdbData.length < rdbLength) {
+        throw new IOException("Incomplete RDB file: expected " + rdbLength + " bytes but got " + rdbData.length);
+      }
+      System.out.println("[REPL] Successfully read RDB file of length " + Arrays.toString(rdbData));
+    }
+    catch (IOException e) {
+      System.out.println("[REPL] Error reading RDB file: " + e.getMessage());
+    } catch (NumberFormatException e) {
+      System.out.println("[REPL] Error: Invalid RDB length format: " + e.getMessage());
+    }
   }
 }
 
