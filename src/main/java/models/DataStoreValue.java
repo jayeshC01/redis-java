@@ -67,6 +67,15 @@ public class DataStoreValue {
     throw new IllegalStateException("WRONGTYPE Operation against a key holding the wrong kind of value");
   }
 
+  public boolean isZSet() { return value instanceof ZSet; }
+
+  public ZSet getAsZSet() {
+    if (!(value instanceof ZSet)) {
+      throw new IllegalStateException("WRONGTYPE Operation against a key holding the wrong kind of value");
+    }
+    return (ZSet) value;
+  }
+
   public String getValueType() {
     if (value instanceof String || value instanceof Number) {
       return "string";
@@ -76,6 +85,8 @@ public class DataStoreValue {
       return "set";
     } else if (value instanceof ConcurrentNavigableMap<?,?>) {
       return "stream";
+    } else if (value instanceof ZSet) {
+      return "zset";
     }
     return "undefined";
   }
