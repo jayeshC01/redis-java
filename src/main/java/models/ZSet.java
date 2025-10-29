@@ -52,4 +52,27 @@ public class ZSet {
     }
     return null;
   }
+
+  public java.util.List<String> range(int start, int stop) {
+    java.util.List<String> out = new java.util.ArrayList<>();
+    int size = items.size();
+
+    if (size == 0 || start >= size || start > stop) {
+      return out;
+    }
+
+    if (stop >= size) {
+      stop = size - 1;
+    }
+
+    int i = 0;
+    for (ZItem it : items) {
+      if (i >= start && i <= stop) {
+        out.add(it.member);
+      }
+      if (i > stop) break;
+      i++;
+    }
+    return out;
+  }
 }
