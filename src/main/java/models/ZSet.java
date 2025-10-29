@@ -26,4 +26,21 @@ public class ZSet {
   public boolean containsMember(String member) { return index.containsKey(member); }
 
   public int size() { return items.size(); }
+
+  public boolean addOrUpdate(double score, String member) {
+    ZItem existing = index.get(member);
+    if (existing != null) {
+      items.remove(existing);
+      ZItem updated = new ZItem(member, score);
+      items.add(updated);
+      index.put(member, updated);
+      return false;
+    } else {
+      ZItem it = new ZItem(member, score);
+      items.add(it);
+      index.put(member, it);
+      return true;
+    }
+  }
+
 }
