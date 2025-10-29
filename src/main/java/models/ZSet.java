@@ -43,4 +43,13 @@ public class ZSet {
     }
   }
 
+  public Integer rankOf(String member) {
+    if (!index.containsKey(member)) return null;
+    int i = 0;
+    for (ZItem it : items) {
+      if (it.member.equals(member)) return i;
+      i++;
+    }
+    return null;
+  }
 }
