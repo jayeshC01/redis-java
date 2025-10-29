@@ -53,24 +53,26 @@ public class ZSet {
     return null;
   }
 
-  public java.util.List<String> range(int start, int stop) {
-    java.util.List<String> out = new java.util.ArrayList<>();
+  public List<String> range(int start, int stop) {
+    List<String> out = new ArrayList<>();
     int size = items.size();
+    if (size == 0) return out;
 
-    if (size == 0 || start >= size || start > stop) {
-      return out;
-    }
+    int s = (start < 0) ? size + start : start;
+    int e = (stop  < 0) ? size + stop  : stop;
 
-    if (stop >= size) {
-      stop = size - 1;
-    }
+    if (start < 0 && Math.abs(start) >= size) s = 0;
+    if (stop  < 0 && Math.abs(stop)  >= size) e = 0;
+
+    if (s < 0) s = 0;
+    if (e < 0) e = 0;
+    if (e >= size) e = size - 1;
+    if (s >= size || s > e) return out;
 
     int i = 0;
     for (ZItem it : items) {
-      if (i >= start && i <= stop) {
-        out.add(it.member);
-      }
-      if (i > stop) break;
+      if (i >= s && i <= e) out.add(it.member);
+      if (i > e) break;
       i++;
     }
     return out;

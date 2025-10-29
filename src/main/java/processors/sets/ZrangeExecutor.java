@@ -12,15 +12,11 @@ import java.util.List;
 
 public class ZrangeExecutor implements CommandExecutor {
 
-  @Override
   public String execute(RespCommand cmd) {
     try {
       validateCmd(cmd);
 
       String key = cmd.getKey();
-      int start = Integer.parseInt(cmd.getArgs().get(1));
-      int stop = Integer.parseInt(cmd.getArgs().get(2));
-
       DataStoreValue value = DataStore.get(key);
       if (value == null) {
         return RespUtility.serializeResponse(new ArrayList<String>());
@@ -30,10 +26,12 @@ public class ZrangeExecutor implements CommandExecutor {
       }
 
       ZSet zset = value.getAsZSet();
+      int start = Integer.parseInt(cmd.getArgs().get(1));
+      int stop = Integer.parseInt(cmd.getArgs().get(2));
       List<String> members = zset.range(start, stop);
       return RespUtility.serializeResponse(members);
     } catch (NumberFormatException e) {
-      return RespUtility.buildErrorResponse("value is not an integer or out of range");
+      return RespUtility.buildErrorResponse("value is not an integer");
     } catch (IllegalArgumentException | IllegalStateException e) {
       return RespUtility.buildErrorResponse(e.getMessage());
     }
