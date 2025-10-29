@@ -8,6 +8,7 @@ import processors.rdb.KeysExecutor;
 import processors.replication.InfoExecutor;
 import processors.replication.ReplconfExecutor;
 import processors.sets.ZaddExecutor;
+import processors.sets.ZcardExecutor;
 import processors.sets.ZrangeExecutor;
 import processors.sets.ZrankExecutor;
 import processors.streams.TypeExecutor;
@@ -54,6 +55,7 @@ public class CommandProcessor {
       case "ZADD" -> new ZaddExecutor().execute(cmd);
       case "ZRANK" -> new ZrankExecutor().execute(cmd);
       case "ZRANGE" -> new ZrangeExecutor().execute(cmd);
+      case "ZCARD" -> new ZcardExecutor().execute(cmd);
       default -> RespUtility.buildErrorResponse("Invalid Command: " + cmd);
     };
   }
