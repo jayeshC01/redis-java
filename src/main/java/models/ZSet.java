@@ -77,4 +77,10 @@ public class ZSet {
     }
     return out;
   }
+
+  public String scoreOf(String member) {
+    ZItem it = index.get(member);
+    if (it == null) return null;
+    return Double.toString(it.score);
+  }
 }
