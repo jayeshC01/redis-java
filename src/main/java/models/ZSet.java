@@ -83,4 +83,11 @@ public class ZSet {
     if (it == null) return null;
     return Double.toString(it.score);
   }
+
+  public boolean removeMember(String member) {
+    ZItem it = index.remove(member);
+    if (it == null) return false;
+    items.remove(it);
+    return true;
+  }
 }

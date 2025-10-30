@@ -54,6 +54,7 @@ public class CommandProcessor {
       case "ZRANGE" -> new ZrangeExecutor().execute(cmd);
       case "ZCARD" -> new ZcardExecutor().execute(cmd);
       case "ZSCORE" -> new ZscoreExecutor().execute(cmd);
+      case "ZREM" -> new ZremExecutor().execute(cmd);
       default -> RespUtility.buildErrorResponse("Invalid Command: " + cmd);
     };
   }
